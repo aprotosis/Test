@@ -26,19 +26,26 @@ public class WandController : SteamVR_TrackedController {
     }
 
     protected LineRenderer lineRenderer;
+    public LineRenderer innerGlowRenderer;
     protected Vector3[] lineRendererVertices;
-    
+    protected Vector3[] innerGlowVertices;
+
+    public Transform hiltTransform;
+    private float bladeEffectOffset = 0.0f;
     // Use this for initialization
 	protected override void Start ()
     {
         base.Start();
 
-        lineRenderer = gameObject.AddComponent<LineRenderer>();
-        lineRenderer.material = new Material(Shader.Find("Particles/Additive"));
-        lineRenderer.SetWidth(0.01f, 0.01f);
-        lineRenderer.SetVertexCount(2);
+        //lineRenderer = gameObject.AddComponent<LineRenderer>();
+        lineRenderer = gameObject.GetComponent<LineRenderer>();
+        //lineRenderer.material = new Material(Shader.Find("Particles/Additive"));
+        //lineRenderer.SetWidth(0.01f, 0.01f);
+        //lineRenderer.SetVertexCount(2);
 
         lineRendererVertices = new Vector3[2];
+        innerGlowVertices = new Vector3[2];
+
 	}
 	
 	// Update is called once per frame
@@ -46,24 +53,27 @@ public class WandController : SteamVR_TrackedController {
     {
         base.Update();
 
-        if(lineRenderer && lineRenderer.enabled)
+        if(lineRenderer && lineRenderer.enabled && hiltTransform && innerGlowRenderer && innerGlowRenderer.enabled)
         {
-            RaycastHit hit;
-            Vector3 startPos = transform.position;
-
-            if (Physics.Raycast(startPos, transform.forward, out hit, 1000.0f))
-            {
-                lineRendererVertices[1] = hit.point;
-                lineRenderer.SetColors(Color.green, Color.green);
-            }
-            else
-            {
-                lineRendererVertices[1] = startPos + transform.forward * 1000.0f;
-                lineRenderer.SetColors(Color.red, Color.red);
-            }
-
-            lineRendererVertices[0] = transform.position;
+            // create length and position of blade
+            Vector3 startPos = hiltTransform.position;
+            lineRendererVertices[0] = startPos;
+            lineRendererVertices[1] = startPos + (hiltTransform.up*0.75f);
             lineRenderer.SetPositions(lineRendererVertices);
+
+            // vibrate effect texture
+            bladeEffectOffset -= Time.deltaTime * 2f;
+            if(bladeEffectOffset < -10f)
+            {
+                bladeEffectOffset += 10f;
+            }
+            lineRenderer.sharedMaterials[1].SetTextureOffset("_MainTex",new Vector2(bladeEffectOffset, 0.0f));
+
+            //create length and position of inner glow
+            innerGlowVertices[0] = startPos;
+            innerGlowVertices[1] = startPos + (hiltTransform.up * 0.75f);
+            innerGlowRenderer.SetPositions(innerGlowVertices);
+
         }
 	}
 
@@ -73,14 +83,6 @@ public class WandController : SteamVR_TrackedController {
 
         if (transform.parent == null)
             return;
-
-        RaycastHit hit;
-        Vector3 startPos = transform.position;
-
-        if(Physics.Raycast(startPos, transform.forward, out hit, 1000.0f))
-        {
-            transform.parent.position = hit.point;
-        }
     }
 
     public override void OnTriggerUnclicked(ClickedEventArgs e)
