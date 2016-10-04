@@ -17,6 +17,17 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
+# Unity Added
+Temp/
+Library/
+
+# Visual Studio added
+*.svd
+*.csproj
+*.suo
+*.sln
+
+
 # =========================
 # Operating System Files
 # =========================
