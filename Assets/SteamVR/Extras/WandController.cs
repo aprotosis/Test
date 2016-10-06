@@ -31,9 +31,19 @@ public class WandController : SteamVR_TrackedController {
     protected Vector3[] innerGlowVertices;
 
     public Transform hiltTransform;
+    public Transform bladeTransform;
+
+    public float bladeSpeed = 1;
+    private bool bladeOut = false;
+    private bool igniting = false;
     private float bladeEffectOffset = 0.0f;
+    private float bladeExtensionTimer = 0.0f;
+
+    private float bladeCenterOffset = 0.4f;
+    private Vector3 bladeCenterDistanceFromHilt;
+
     // Use this for initialization
-	protected override void Start ()
+    protected override void Start ()
     {
         base.Start();
 
@@ -45,37 +55,51 @@ public class WandController : SteamVR_TrackedController {
 
         lineRendererVertices = new Vector3[2];
         innerGlowVertices = new Vector3[2];
+        bladeTransform.localScale = new Vector3(bladeTransform.localScale.x, 0, bladeTransform.localScale.z);
+        bladeCenterDistanceFromHilt = Vector3.zero;
 
-	}
+
+    }
 	
 	// Update is called once per frame
 	protected override void Update ()
     {
         base.Update();
 
-        if(lineRenderer && lineRenderer.enabled && hiltTransform && innerGlowRenderer && innerGlowRenderer.enabled)
+
+        // test if the blade is extending in or out and make it behave properly
+        if (igniting)
         {
-            // create length and position of blade
-            Vector3 startPos = hiltTransform.position;
-            lineRendererVertices[0] = startPos;
-            lineRendererVertices[1] = startPos + (hiltTransform.up*0.75f);
-            lineRenderer.SetPositions(lineRendererVertices);
-
-            // vibrate effect texture
-            bladeEffectOffset -= Time.deltaTime * 2f;
-            if(bladeEffectOffset < -10f)
+            if(bladeOut)
             {
-                bladeEffectOffset += 10f;
+                bladeExtensionTimer -= Time.deltaTime * bladeSpeed;
+                if(bladeExtensionTimer < 0)
+                {
+                    bladeExtensionTimer = 0;
+                    igniting = false;
+                    bladeOut = false;
+                }
             }
-            lineRenderer.sharedMaterials[1].SetTextureOffset("_MainTex",new Vector2(bladeEffectOffset, 0.0f));
-
-            //create length and position of inner glow
-            innerGlowVertices[0] = startPos;
-            innerGlowVertices[1] = startPos + (hiltTransform.up * 0.75f);
-            innerGlowRenderer.SetPositions(innerGlowVertices);
-
+            else
+            {
+                bladeExtensionTimer += Time.deltaTime * bladeSpeed;
+                if(bladeExtensionTimer > 1)
+                {
+                    bladeExtensionTimer = 1;
+                    igniting = false;
+                    bladeOut = true;
+                }
+            }
+            bladeTransform.localScale = Vector3.Lerp(new Vector3(bladeTransform.localScale.x, 0, bladeTransform.localScale.z), new Vector3(bladeTransform.localScale.x, 0.4f, bladeTransform.localScale.z), bladeExtensionTimer);
+            bladeCenterDistanceFromHilt = Vector3.Lerp(Vector3.zero, new Vector3(0, bladeCenterOffset, 0), bladeExtensionTimer);
         }
-	}
+
+        bladeTransform.position = hiltTransform.position;
+        bladeTransform.rotation = hiltTransform.rotation;
+        bladeTransform.Translate(bladeCenterDistanceFromHilt);
+
+
+    }
 
     public override void OnTriggerClicked(ClickedEventArgs e)
     {
@@ -83,6 +107,10 @@ public class WandController : SteamVR_TrackedController {
 
         if (transform.parent == null)
             return;
+
+        // make the blade go in or out
+        igniting = true;
+
     }
 
     public override void OnTriggerUnclicked(ClickedEventArgs e)
