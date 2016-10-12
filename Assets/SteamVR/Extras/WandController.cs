@@ -25,19 +25,22 @@ public class WandController : SteamVR_TrackedController {
         }
     }
 
-    protected LineRenderer lineRenderer;
-    public LineRenderer innerGlowRenderer;
-    protected Vector3[] lineRendererVertices;
-    protected Vector3[] innerGlowVertices;
+
+    private AudioSource bladeHum;
+    public AudioClip bladeExtendSound;
+    public AudioClip bladeRetractSound;
+
 
     public Transform hiltTransform;
     public Transform bladeTransform;
 
-    public float bladeSpeed = 1;
+    public MeshRenderer bladeRenderer;
+    public float bladeExtendSpeed = 1;
+    public float bladeRetractSpeed = 1;
     private bool bladeOut = false;
     private bool igniting = false;
-    private float bladeEffectOffset = 0.0f;
     private float bladeExtensionTimer = 0.0f;
+    private Color bladeGlow;
 
     private float bladeCenterOffset = 0.4f;
     private Vector3 bladeCenterDistanceFromHilt;
@@ -48,13 +51,14 @@ public class WandController : SteamVR_TrackedController {
         base.Start();
 
         //lineRenderer = gameObject.AddComponent<LineRenderer>();
-        lineRenderer = gameObject.GetComponent<LineRenderer>();
+        //lineRenderer = gameObject.GetComponent<LineRenderer>();
         //lineRenderer.material = new Material(Shader.Find("Particles/Additive"));
         //lineRenderer.SetWidth(0.01f, 0.01f);
         //lineRenderer.SetVertexCount(2);
-
-        lineRendererVertices = new Vector3[2];
-        innerGlowVertices = new Vector3[2];
+        bladeHum = gameObject.GetComponentInChildren<AudioSource>();
+        bladeGlow = new Color();
+        bladeGlow = bladeRenderer.material.GetColor("_EmissionColor");
+        bladeRenderer.material.SetColor("_EmissionColor", Color.black);
         bladeTransform.localScale = new Vector3(bladeTransform.localScale.x, 0, bladeTransform.localScale.z);
         bladeCenterDistanceFromHilt = Vector3.zero;
 
@@ -72,22 +76,29 @@ public class WandController : SteamVR_TrackedController {
         {
             if(bladeOut)
             {
-                bladeExtensionTimer -= Time.deltaTime * bladeSpeed;
+                bladeExtensionTimer -= Time.deltaTime * bladeRetractSpeed;
                 if(bladeExtensionTimer < 0)
                 {
                     bladeExtensionTimer = 0;
                     igniting = false;
                     bladeOut = false;
+                    bladeRenderer.material.SetColor("_EmissionColor", Color.black);
+                    if(bladeHum != null)
+                    {
+                        bladeHum.Stop();
+                    }
                 }
             }
             else
             {
-                bladeExtensionTimer += Time.deltaTime * bladeSpeed;
+                bladeExtensionTimer += Time.deltaTime * bladeExtendSpeed;
                 if(bladeExtensionTimer > 1)
                 {
                     bladeExtensionTimer = 1;
                     igniting = false;
                     bladeOut = true;
+                    if(bladeHum != null)
+                        bladeHum.Play();
                 }
             }
             bladeTransform.localScale = Vector3.Lerp(new Vector3(bladeTransform.localScale.x, 0, bladeTransform.localScale.z), new Vector3(bladeTransform.localScale.x, 0.4f, bladeTransform.localScale.z), bladeExtensionTimer);
@@ -110,6 +121,18 @@ public class WandController : SteamVR_TrackedController {
 
         // make the blade go in or out
         igniting = true;
+        if (bladeHum != null)
+        {
+            if (bladeOut)
+            {
+                bladeHum.PlayOneShot(bladeRetractSound, 1);
+            }
+            else
+            {
+                bladeHum.PlayOneShot(bladeExtendSound, 1);
+                bladeRenderer.material.SetColor("_EmissionColor", bladeGlow);
+            }
+        }
 
     }
 
